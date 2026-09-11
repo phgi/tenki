@@ -1,0 +1,26 @@
+[package]
+name = "tenki"
+version = "0.1.0"
+edition = "2021"
+description = "A terminal weather visualization app with animated ASCII art"
+license = "MIT"
+
+[[bin]]
+name = "tenki"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand = "0.8"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"
