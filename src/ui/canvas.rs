@@ -3,7 +3,7 @@ use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
 use crate::net::model::Condition;
-use crate::ui::bigfont::{glyph, glyph_advance, GLYPH_ROWS};
+use crate::ui::bigfont::{glyph, glyph_advance, ink_bounds, GLYPH_ROWS};
 use crate::ui::particles::Particle;
 use crate::ui::theme::{self, dim, rgb, wave_color};
 
@@ -111,9 +111,15 @@ impl<'a> Canvas<'a> {
             scale -= 1;
         }
 
-        let total_width = (text_cols as u16 * scale).min(area.width);
+        // Center on the ink rather than the advance box, otherwise the trailing
+        // inter-glyph gap (and the half-empty '°' cell) pulls the hero left.
+        let (ink_first, ink_last) = ink_bounds(&text).unwrap_or((0, text_cols));
+        let ink_width = ((ink_last - ink_first) as u16 * scale).min(area.width);
         let total_height = GLYPH_ROWS as u16 * scale;
-        let start_x = area.left() + area.width.saturating_sub(total_width) / 2;
+        let ink_left = area.left() + area.width.saturating_sub(ink_width) / 2;
+        let start_x = ink_left
+            .saturating_sub(ink_first as u16 * scale)
+            .max(area.left());
         let start_y = area.top() + (area.height.saturating_sub(total_height)) * 2 / 5;
 
         let (stop_a, stop_b) = hero_gradient(self.condition, self.is_day);
@@ -123,8 +129,8 @@ impl<'a> Canvas<'a> {
         let label_row = start_y + total_height + 1;
         let plate_top = start_y.saturating_sub(1);
         let plate_bottom = (label_row + 1).min(area.bottom());
-        let plate_left = start_x.saturating_sub(2).max(area.left());
-        let plate_right = (start_x + total_width + 2).min(area.right());
+        let plate_left = ink_left.saturating_sub(2).max(area.left());
+        let plate_right = (ink_left + ink_width + 2).min(area.right());
         for y in plate_top..plate_bottom {
             let t = (y - area.top()) as f64 / area.height.max(1) as f64;
             let mut bg = theme_lerp_bg(t);

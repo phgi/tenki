@@ -276,6 +276,29 @@ mod tests {
     }
 
     #[test]
+    fn hero_block_is_horizontally_centered() {
+        // Only the hero uses full blocks, so its extents are safe to measure.
+        for width in [40u16, 60, 80, 100, 240] {
+            let out = render_at(width, 30, Condition::Clear, false);
+            let (mut first, mut last) = (usize::MAX, 0usize);
+            for line in out.lines() {
+                for (i, ch) in line.chars().enumerate() {
+                    if ch == '\u{2588}' {
+                        first = first.min(i);
+                        last = last.max(i + 1);
+                    }
+                }
+            }
+            assert!(first != usize::MAX, "no hero glyphs at width {width}");
+            let (left_gap, right_gap) = (first, width as usize - last);
+            assert!(
+                left_gap.abs_diff(right_gap) <= 1,
+                "hero off-center at width {width}: {left_gap} left vs {right_gap} right\n{out}"
+            );
+        }
+    }
+
+    #[test]
     fn detail_panel_lists_every_stat() {
         let out = render_at(100, 30, Condition::Rain, true);
         for expected in [
