@@ -43,33 +43,40 @@ Press `d` for the numbers:
 ## Install
 
 ```sh
-brew install phgi/tenki/tenki
+brew tap phgi/tenki https://github.com/phgi/tenki
+brew install --HEAD phgi/tenki/tenki
 ```
 
-Nothing else to install — `tenki` is a single self-contained binary. Homebrew
-pulls in Rust only to compile it, then throws it away.
+Nothing else to install — `tenki` is a single self-contained binary with no
+runtime dependencies. Homebrew pulls in Rust only to compile it, then throws
+it away.
+
+Two things that trip people up:
+
+- **The tap step is not optional.** Homebrew 4 refuses to install from a loose
+  formula path (`Error: Homebrew requires formulae to be in a tap`).
+- **No separate `homebrew-tenki` repo is needed.** `brew tap` accepts an
+  explicit URL, so this repo serves as its own tap.
+
+`--HEAD` builds whatever is on `main`. Plain `brew install phgi/tenki/tenki`
+needs a tagged release first:
 
 <details>
-<summary>Publishing the formula (one-time, for the author)</summary>
+<summary>Cutting a release (for the author)</summary>
 
-The formula in `Formula/tenki.rb` is ready except for the repository owner and
-the release checksum:
-
-1. Push this repo to GitHub and replace the placeholder:
+1. Tag it:
    ```sh
-   sed -i '' 's/phgi/your-github-username/g' Formula/tenki.rb README.md
+   git tag v0.1.0 && git push --tags
    ```
-2. Tag a release: `git tag v0.1.0 && git push --tags`
-3. Fill in the checksum:
+2. Get the tarball checksum:
    ```sh
    curl -sL https://github.com/phgi/tenki/archive/refs/tags/v0.1.0.tar.gz | shasum -a 256
    ```
-4. Publish it in a tap named `homebrew-tenki` (a repo containing
-   `Formula/tenki.rb`), which is what makes `brew install phgi/tenki/tenki`
-   work.
+3. Paste it over `REPLACE_WITH_TARBALL_SHA256` in `Formula/tenki.rb`, then
+   commit and push.
 
-Before any of that, `brew install --HEAD --build-from-source ./Formula/tenki.rb`
-installs straight from the checked-out source.
+Users on an older checkout may need `brew update` before the new version shows
+up.
 
 </details>
 
