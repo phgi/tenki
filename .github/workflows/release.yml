@@ -42,11 +42,30 @@ jobs:
       - name: Sync the lockfile to the released version
         # Cargo.lock records the version of tenki itself, so bumping Cargo.toml
         # without rebuilding leaves it stale and every --locked command below
-        # fails. Refresh just that entry offline: no dependency can move, and
-        # --locked still pins the rest of the graph exactly as committed.
+        # fails. Repair that one entry when it is behind. A correctly committed
+        # lockfile is the normal case, so check first and do nothing at all --
+        # a fresh runner has no registry cache, and resolving from scratch here
+        # would be both pointless and a way to fail an otherwise good release.
         run: |
-          cargo update --offline --package tenki --precise "$VERSION"
-          git diff --stat -- Cargo.lock
+          lock_version() {
+            awk '/^name = "tenki"$/ { getline; gsub(/^version = "|"$/, ""); print; exit }' Cargo.lock
+          }
+          if [ "$(lock_version)" = "$VERSION" ]; then
+            echo "Cargo.lock already records tenki $VERSION"
+            exit 0
+          fi
+          echo "::warning::Cargo.lock recorded $(lock_version), not $VERSION; refreshing it"
+          cp Cargo.lock "$RUNNER_TEMP/Cargo.lock.orig"
+          cargo update --package tenki --precise "$VERSION"
+          # Nothing but tenki's own version line may move: one - and one + in
+          # the diff. Anything else means a dependency drifted, which is exactly
+          # what --locked exists to prevent.
+          CHANGED=$(diff "$RUNNER_TEMP/Cargo.lock.orig" Cargo.lock | grep -c '^[<>]' || true)
+          if [ "$CHANGED" -ne 2 ] || [ "$(lock_version)" != "$VERSION" ]; then
+            echo "::error::refreshing Cargo.lock moved more than tenki's own version"
+            diff "$RUNNER_TEMP/Cargo.lock.orig" Cargo.lock || true
+            exit 1
+          fi
 
       - name: Add targets
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
@@ -89,7 +108,7 @@ jobs:
           done
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          cat > Formula/tenki.rb <<FORMULA
+          cat > "$RUNNER_TEMP/tenki.rb" <<FORMULA
           class Tenki < Formula
             desc "Animated terminal weather visualisation in pastel ASCII art"
             homepage "https://github.com/${{ github.repository }}"
@@ -129,17 +148,20 @@ jobs:
             end
           end
           FORMULA
-          cat Formula/tenki.rb
+          cat "$RUNNER_TEMP/tenki.rb"
 
       - name: Commit the formula to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # The lockfile sync above is build-local; drop it so switching branches
-          # is never blocked by an uncommitted change.
-          git checkout -- Cargo.lock
+          # Switch branches from a clean tree. The lockfile sync above is
+          # build-local, and the formula lives in RUNNER_TEMP precisely so that
+          # neither can collide with whatever main holds for those paths --
+          # which is what re-running an older tag after a newer release does.
+          git checkout -- .
           git fetch origin main
-          git checkout main
+          git checkout -B main origin/main
+          cp "$RUNNER_TEMP/tenki.rb" Formula/tenki.rb
           git add Formula/tenki.rb
           if git diff --staged --quiet; then
             echo "formula already up to date"
