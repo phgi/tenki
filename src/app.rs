@@ -599,6 +599,26 @@ mod tests {
         }
     }
 
+    /// The icon column used to sit flush against the left border.
+    #[test]
+    fn detail_panel_keeps_a_margin_inside_its_border() {
+        let out = render_at(100, 30, Condition::Rain, true);
+        let body: Vec<&str> = out
+            .lines()
+            .filter(|l| l.contains('│') && l.contains("Temperature"))
+            .collect();
+        assert_eq!(body.len(), 1, "expected one temperature row:\n{out}");
+
+        let row = body[0];
+        let inner = &row[row.find('│').unwrap() + '│'.len_utf8()..];
+        let inner = &inner[..inner.rfind('│').unwrap()];
+        assert!(
+            inner.starts_with("  ") && !inner.starts_with("   "),
+            "left margin is not two columns: {inner:?}"
+        );
+        assert!(inner.ends_with("  "), "no right margin: {inner:?}");
+    }
+
     #[test]
     fn status_line_never_overflows_a_narrow_terminal() {
         for width in [30u16, 46, 60, 69, 70, 100] {

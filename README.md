@@ -27,16 +27,16 @@ Press `d` for the numbers:
 ```
 ╭──────────────────── Asahi, Chiba ────────────────────╮
 │                                                      │
-│🌡   Temperature       18.4°C                          │
-│🤔   Feels like        17.1°C                          │
-│💧   Humidity          72%                             │
-│🌬   Wind              14 km/h SW                      │
-│⏲   Pressure          1013 hPa                        │
-│😎   UV index          4.2                             │
-│🌂   Chance of rain    65%                             │
+│  🌡   Temperature       18.4°C                        │
+│  🤔   Feels like        17.1°C                       │
+│  💧   Humidity          72%                          │
+│  🌬   Wind              14 km/h SW                    │
+│  ⏲   Pressure          1013 hPa                      │
+│  😎   UV index          4.2                          │
+│  🌂   Chance of rain    65%                          │
 │                                                      │
-│🌅   Sunrise           05:21                           │
-│🌇   Sunset            18:04                           │
+│  🌅   Sunrise           05:21                        │
+│  🌇   Sunset            18:04                        │
 │                                                      │
 ╰────────────────── press d to close ──────────────────╯
 ```

@@ -1,11 +1,15 @@
 use ratatui::layout::{Alignment, Constraint, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Cell, Clear, Row, Table};
+use ratatui::widgets::{Block, BorderType, Borders, Cell, Clear, Padding, Row, Table};
 use ratatui::Frame;
 
 use crate::net::model::WeatherData;
 use crate::ui::theme::{self, rgb};
+
+/// Breathing room between the border and the table, so the icon column does
+/// not cling to the left edge.
+const PANEL_PADDING: u16 = 2;
 
 const PANEL_WIDTH: u16 = 56;
 const PANEL_HEIGHT: u16 = 16;
@@ -56,6 +60,7 @@ pub fn render(frame: &mut Frame, weather: &WeatherData) {
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .padding(Padding::horizontal(PANEL_PADDING))
         .border_type(BorderType::Rounded)
         .border_style(Style::default().fg(rgb(theme::LAVENDER)))
         .style(Style::default().bg(rgb(theme::BG_DIM)))
