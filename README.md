@@ -43,7 +43,7 @@ Press `d` for the numbers:
 ## Install
 
 ```sh
-brew install OWNER/tenki/tenki
+brew install phgi/tenki/tenki
 ```
 
 Nothing else to install — `tenki` is a single self-contained binary. Homebrew
@@ -57,15 +57,15 @@ the release checksum:
 
 1. Push this repo to GitHub and replace the placeholder:
    ```sh
-   sed -i '' 's/OWNER/your-github-username/g' Formula/tenki.rb README.md
+   sed -i '' 's/phgi/your-github-username/g' Formula/tenki.rb README.md
    ```
 2. Tag a release: `git tag v0.1.0 && git push --tags`
 3. Fill in the checksum:
    ```sh
-   curl -sL https://github.com/OWNER/tenki/archive/refs/tags/v0.1.0.tar.gz | shasum -a 256
+   curl -sL https://github.com/phgi/tenki/archive/refs/tags/v0.1.0.tar.gz | shasum -a 256
    ```
 4. Publish it in a tap named `homebrew-tenki` (a repo containing
-   `Formula/tenki.rb`), which is what makes `brew install OWNER/tenki/tenki`
+   `Formula/tenki.rb`), which is what makes `brew install phgi/tenki/tenki`
    work.
 
 Before any of that, `brew install --HEAD --build-from-source ./Formula/tenki.rb`
