@@ -3,7 +3,7 @@ use ratatui::layout::Rect;
 use ratatui::widgets::Widget;
 
 use crate::net::model::Condition;
-use crate::ui::bigfont::{glyph, glyph_advance, ink_bounds, GLYPH_ROWS};
+use crate::ui::bigfont::{glyph, glyph_advance, ink_bounds, optical_center, GLYPH_ROWS};
 use crate::ui::particles::Particle;
 use crate::ui::theme::{self, dim, rgb, wave_color};
 
@@ -101,25 +101,9 @@ impl<'a> Canvas<'a> {
     fn paint_hero(&self, area: Rect, buf: &mut Buffer) {
         let text = self.hero_text.to_ascii_uppercase();
         let advance = glyph_advance();
-        let text_cols = text.chars().count() * advance;
-
-        let mut scale: u16 = 4;
-        while scale > 1
-            && (text_cols as u16 * scale > area.width.saturating_sub(4)
-                || (GLYPH_ROWS as u16 * scale) > area.height / 2)
-        {
-            scale -= 1;
-        }
-
-        // Center on the ink rather than the advance box, otherwise the trailing
-        // inter-glyph gap (and the half-empty '°' cell) pulls the hero left.
-        let (ink_first, ink_last) = ink_bounds(&text).unwrap_or((0, text_cols));
-        let ink_width = ((ink_last - ink_first) as u16 * scale).min(area.width);
-        let total_height = GLYPH_ROWS as u16 * scale;
-        let ink_left = area.left() + area.width.saturating_sub(ink_width) / 2;
-        let start_x = ink_left
-            .saturating_sub(ink_first as u16 * scale)
-            .max(area.left());
+        let m = hero_metrics(&text, area);
+        let (scale, start_x, ink_left, ink_width) = (m.scale, m.start_x, m.ink_left, m.ink_width);
+        let total_height = m.height;
         let start_y = area.top() + (area.height.saturating_sub(total_height)) * 2 / 5;
 
         let (stop_a, stop_b) = hero_gradient(self.condition, self.is_day);
@@ -199,6 +183,55 @@ impl<'a> Canvas<'a> {
     }
 }
 
+/// Where the big hero glyphs land: the chosen pixel scale plus the origin of glyph
+/// cell 0 and the extent of the ink it actually draws.
+struct HeroMetrics {
+    scale: u16,
+    /// Cell x of glyph cell 0 — where the layout starts, blank columns included.
+    start_x: u16,
+    /// Cell x of the first column that actually gets inked.
+    ink_left: u16,
+    ink_width: u16,
+    height: u16,
+}
+
+fn hero_metrics(text: &str, area: Rect) -> HeroMetrics {
+    let advance = glyph_advance();
+    let text_cols = text.chars().count() * advance;
+
+    let mut scale: u16 = 4;
+    while scale > 1
+        && (text_cols as u16 * scale > area.width.saturating_sub(4)
+            || (GLYPH_ROWS as u16 * scale) > area.height / 2)
+    {
+        scale -= 1;
+    }
+
+    // Centering the advance box drifts left: it carries the trailing inter-glyph gap,
+    // and '°' leaves its right-hand columns empty. Centering the raw ink fixes the
+    // arithmetic but still reads as left-shifted, so balance on the optical center.
+    let (ink_first, ink_last) = ink_bounds(text).unwrap_or((0, text_cols));
+    let center = optical_center(text).unwrap_or((ink_first + ink_last) as f64 / 2.0);
+    let ink_width = ((ink_last - ink_first) as u16 * scale).min(area.width);
+
+    let slack = area.width.saturating_sub(ink_width);
+    let geometric = slack / 2;
+    let nudge = (((ink_first + ink_last) as f64 / 2.0 - center) * scale as f64).round();
+    // On a narrow terminal the margins are all the breathing room there is, so cap the
+    // nudge rather than let it crowd the hero against the right-hand edge.
+    let nudge = (nudge.max(0.0) as u16).min(slack / 4);
+    let ink_left = (geometric + nudge).min(slack);
+    let start_x = (area.left() + ink_left).saturating_sub(ink_first as u16 * scale);
+
+    HeroMetrics {
+        scale,
+        start_x: start_x.max(area.left()),
+        ink_left: area.left() + ink_left,
+        ink_width,
+        height: GLYPH_ROWS as u16 * scale,
+    }
+}
+
 fn theme_lerp_bg(t: f64) -> (u8, u8, u8) {
     theme::lerp(theme::BG, theme::BG_DEEP, t)
 }
@@ -240,5 +273,43 @@ pub fn icon_for(condition: Condition, is_day: bool) -> &'static str {
         Condition::Freezing => "☂",
         Condition::Snow | Condition::SnowShowers => "❄",
         Condition::Thunderstorm => "⚡",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn metrics(text: &str, w: u16, h: u16) -> HeroMetrics {
+        hero_metrics(text, Rect::new(0, 0, w, h))
+    }
+
+    #[test]
+    fn hero_is_nudged_right_of_geometric_center() {
+        // An 80x23 canvas renders "21°" at scale 2: 16 inked font-columns, 32 cells.
+        let m = metrics("21°", 80, 23);
+        assert_eq!((m.scale, m.ink_width), (2, 32));
+        // Geometric centering would park the ink at 24; discounting '°' adds 3.
+        assert_eq!(m.ink_left, 27);
+        // '2' inks from its very first column, so the layout origin coincides with it.
+        assert_eq!(m.start_x, 27);
+    }
+
+    #[test]
+    fn narrow_canvas_caps_the_nudge() {
+        let m = metrics("21°", 40, 23);
+        let slack = 40 - m.ink_width;
+        assert!(m.ink_left > slack / 2, "should still lean right: {}", m.ink_left);
+        assert!(
+            40 - m.ink_left - m.ink_width >= 1,
+            "must keep a right-hand margin: {}",
+            m.ink_left
+        );
+    }
+
+    #[test]
+    fn hero_respects_the_area_origin() {
+        let shifted = hero_metrics("21°", Rect::new(10, 0, 80, 23));
+        assert_eq!(shifted.ink_left, 10 + 27);
     }
 }

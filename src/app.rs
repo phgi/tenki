@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn hero_block_is_horizontally_centered() {
+    fn hero_block_sits_optically_centered() {
         // Only the hero uses full blocks, so its extents are safe to measure.
         for width in [40u16, 60, 80, 100, 240] {
             let out = render_at(width, 30, Condition::Clear, false);
@@ -291,9 +291,15 @@ mod tests {
             }
             assert!(first != usize::MAX, "no hero glyphs at width {width}");
             let (left_gap, right_gap) = (first, width as usize - last);
+            // The trailing '°' is discounted, so the block deliberately sits right of
+            // dead center — but it must never crowd or run off the right-hand edge.
             assert!(
-                left_gap.abs_diff(right_gap) <= 1,
-                "hero off-center at width {width}: {left_gap} left vs {right_gap} right\n{out}"
+                left_gap > right_gap,
+                "hero not nudged right at width {width}: {left_gap} left vs {right_gap} right\n{out}"
+            );
+            assert!(
+                right_gap >= left_gap / 2,
+                "hero nudged too far right at width {width}: {left_gap} left vs {right_gap} right\n{out}"
             );
         }
     }
