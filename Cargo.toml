@@ -1,6 +1,6 @@
 [package]
 name = "tenki"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "A terminal weather visualization app with animated ASCII art"
 license = "MIT"
