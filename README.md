@@ -44,12 +44,17 @@ Press `d` for the numbers:
 
 ```sh
 brew tap phgi/tenki https://github.com/phgi/tenki
-brew install --HEAD phgi/tenki/tenki
+brew install phgi/tenki/tenki
 ```
 
-Nothing else to install — `tenki` is a single self-contained binary with no
-runtime dependencies. Homebrew pulls in Rust only to compile it, then throws
-it away.
+That downloads a prebuilt binary — a single self-contained ~2.6 MB executable
+with no runtime dependencies. No Rust toolchain, no compiling, no crate
+downloads; it takes a couple of seconds.
+
+To build current `main` from source instead, use `brew install --HEAD
+phgi/tenki/tenki`. That route *does* install a Rust toolchain as a build
+dependency, and Homebrew keeps it afterwards — `brew autoremove` drops it
+again once the install is done.
 
 Two things that trip people up:
 
@@ -58,25 +63,22 @@ Two things that trip people up:
 - **No separate `homebrew-tenki` repo is needed.** `brew tap` accepts an
   explicit URL, so this repo serves as its own tap.
 
-`--HEAD` builds whatever is on `main`. Plain `brew install phgi/tenki/tenki`
-needs a tagged release first:
-
 <details>
 <summary>Cutting a release (for the author)</summary>
 
-1. Tag it:
-   ```sh
-   git tag v0.1.0 && git push --tags
-   ```
-2. Get the tarball checksum:
-   ```sh
-   curl -sL https://github.com/phgi/tenki/archive/refs/tags/v0.1.0.tar.gz | shasum -a 256
-   ```
-3. Paste it over `REPLACE_WITH_TARBALL_SHA256` in `Formula/tenki.rb`, then
-   commit and push.
+Releases are automated by `.github/workflows/release.yml`. Pushing a `v*` tag
+builds both macOS binaries (arm64 natively, x86_64 cross-compiled from the same
+runner), publishes them as release assets, and commits a regenerated
+`Formula/tenki.rb` pointing at them with real checksums.
 
-Users on an older checkout may need `brew update` before the new version shows
-up.
+```sh
+# bump the version in Cargo.toml first, then:
+git tag v0.1.1 && git push --tags
+```
+
+The tag must match the version in `Cargo.toml` — the workflow fails fast if it
+doesn't. An existing tag can be rebuilt from the Actions tab via the
+`workflow_dispatch` trigger.
 
 </details>
 
