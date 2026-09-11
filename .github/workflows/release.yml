@@ -39,6 +39,15 @@ jobs:
             exit 1
           fi
 
+      - name: Sync the lockfile to the released version
+        # Cargo.lock records the version of tenki itself, so bumping Cargo.toml
+        # without rebuilding leaves it stale and every --locked command below
+        # fails. Refresh just that entry offline: no dependency can move, and
+        # --locked still pins the rest of the graph exactly as committed.
+        run: |
+          cargo update --offline --package tenki --precise "$VERSION"
+          git diff --stat -- Cargo.lock
+
       - name: Add targets
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
@@ -126,6 +135,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The lockfile sync above is build-local; drop it so switching branches
+          # is never blocked by an uncommitted change.
+          git checkout -- Cargo.lock
           git fetch origin main
           git checkout main
           git add Formula/tenki.rb
