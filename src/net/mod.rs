@@ -1,3 +1,4 @@
+pub mod geocode;
 pub mod geolocation;
 pub mod model;
 pub mod weather;
@@ -12,17 +13,14 @@ pub fn client() -> reqwest::Client {
         .expect("failed to build HTTP client")
 }
 
+/// Fetch the weather for `location`, falling back to IP geolocation when the
+/// user has not told us where they are.
 pub async fn fetch_all(
     client: &reqwest::Client,
-    override_location: Option<(f64, f64)>,
+    location: Option<Location>,
 ) -> Result<WeatherData, String> {
-    let location = match override_location {
-        Some((lat, lon)) => Location {
-            city: "Custom Location".to_string(),
-            region: String::new(),
-            latitude: lat,
-            longitude: lon,
-        },
+    let location = match location {
+        Some(loc) => loc,
         None => geolocation::locate(client).await?,
     };
     weather::fetch(client, &location).await

@@ -51,7 +51,7 @@ impl Condition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Location {
     pub city: String,
     pub region: String,

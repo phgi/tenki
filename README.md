@@ -1,7 +1,8 @@
 # tenki 天気
 
-An animated terminal weather app. It finds you by IP, pulls the current
-conditions from [Open-Meteo](https://open-meteo.com), and fills the terminal
+An animated terminal weather app. It finds you by IP, or takes you at your word
+when you press `l` and say where you are. It pulls the current conditions from
+[Open-Meteo](https://open-meteo.com) and fills the terminal
 with vaporwave-pastel ASCII art — rain that falls, snow that drifts, waves that
 roll — with a detail panel one keystroke away.
 
@@ -18,7 +19,7 @@ roll — with a detail panel one keystroke away.
 ~~~           ~'~~                ██████      ██████    '                 '|       ~~~~           ~~
   '  '          ' ~~~                                                           ~~~
         '            ~~~~                      ☂ RAIN                       ~~|~
-               Asahi, Chiba  ·  updated 0s ago  ·  [d] details  [r] refresh  [q] quit
+        Asahi, Chiba  ·  updated 0s ago  ·  [d] details  [l] location  [r] refresh  [q] quit
 ```
 
 Press `d` for the numbers:
@@ -39,6 +40,22 @@ Press `d` for the numbers:
 │                                                      │
 ╰────────────────── press d to close ──────────────────╯
 ```
+
+Press `l` when the IP guess has you in the wrong town:
+
+```
+╭─────────────────── where are you? ───────────────────╮
+│  > berlin mitte▌                                     │
+│  3 matches                                           │
+│ ▸ Mitte, Berlin, Germany                 52.52,13.40 │
+│   Hamburg-Mitte, Hamburg, Germany         53.55,9.99 │
+│   Mitte, North Rhine-Westphalia, Germany  51.23,6.78 │
+╰─────────── ↑↓ select · ⏎ use · esc cancel ───────────╯
+```
+
+Type a city, a district ("berlin mitte"), a postcode, or coordinates straight
+from a map (`52.52, 13.40` — no lookup, no rounding). `⏎` searches, `↑↓` pick,
+`⏎` again uses it. The choice is saved, so the next `tenki` starts there.
 
 ## Install
 
@@ -99,15 +116,39 @@ cargo install --path .
 ## Usage
 
 ```sh
-tenki                          # weather where you are
-tenki --lat 35.72 --lon 140.65 # somewhere else
+tenki                          # the saved location, or your IP's best guess
+tenki --lat 35.72 --lon 140.65 # somewhere else, just this once
+tenki --forget                 # drop the saved location, back to IP detection
 ```
 
-| Key                    | Action                  |
-| ---------------------- | ----------------------- |
-| `d` / `i`              | toggle the detail panel |
-| `r`                    | refresh now             |
-| `q` / `Esc` / `Ctrl-C` | quit                    |
+| Key                    | Action                        |
+| ---------------------- | ----------------------------- |
+| `d` / `i`              | toggle the detail panel       |
+| `l`                    | search for a location         |
+| `r`                    | refresh now                   |
+| `q` / `Esc` / `Ctrl-C` | quit                          |
+
+In the location picker: `⏎` searches and then picks, `↑↓` move, `Ctrl-W` /
+`Ctrl-U` erase a word or the line, `Esc` closes it.
+
+### Where you are
+
+IP geolocation is only accurate to somewhere between a district and a city —
+and to the wrong city entirely on a VPN. The forecast is per-coordinate, so a
+location you pick yourself is a noticeably better forecast.
+
+Precedence is `--lat`/`--lon`, then the location you picked with `l`, then IP
+detection. A picked location is written to
+`$XDG_CONFIG_HOME/tenki/config.toml` (`~/.config/tenki/config.toml`):
+
+```toml
+city = "Mitte"
+region = "Berlin"
+latitude = 52.52003
+longitude = 13.40489
+```
+
+Edit it by hand, delete it, or run `tenki --forget` to go back to IP detection.
 
 The display fills whatever space the terminal has and re-lays itself out when
 you resize. Weather refreshes every 10 minutes; if a refresh fails the last
@@ -117,15 +158,18 @@ good reading stays on screen.
 
 |                       |                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/net/`            | IP geolocation ([ipwho.is](https://ipwho.is), falling back to ip-api.com) and the Open-Meteo forecast call, plus the WMO weather-code mapping |
+| `src/net/`            | IP geolocation ([ipwho.is](https://ipwho.is), falling back to ip-api.com), the Open-Meteo geocoder behind the `l` picker, and the forecast call, plus the WMO weather-code mapping |
+| `src/config.rs`       | the remembered location, as a four-key TOML file                                                                                              |
 | `src/ui/theme.rs`     | the pastel palette and gradient maths                                                                                                         |
 | `src/ui/canvas.rs`    | the full-screen widget: wave background, hero temperature, particles                                                                          |
 | `src/ui/bigfont.rs`   | a hand-rolled 5×5 block font for the big temperature                                                                                          |
 | `src/ui/particles.rs` | per-condition particle system (rain, snow, drizzle, fog)                                                                                      |
 | `src/ui/detail.rs`    | the `d` panel                                                                                                                                 |
+| `src/ui/search.rs`    | the `l` location picker                                                                                                                       |
 
-Neither service needs an API key. Nothing is stored and nothing is sent
-anywhere except the two requests above.
+No service needs an API key. The only thing stored is the location you pick
+yourself, in the config file above; nothing is sent anywhere except the
+requests above.
 
 To see the artwork without a terminal:
 
