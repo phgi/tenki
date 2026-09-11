@@ -72,13 +72,21 @@ runner), publishes them as release assets, and commits a regenerated
 `Formula/tenki.rb` pointing at them with real checksums.
 
 ```sh
-# bump the version in Cargo.toml first, then:
+# 1. bump `version` in Cargo.toml, then refresh the lockfile's own entry
+cargo update --offline --package tenki --precise 0.1.1
+
+# 2. commit both — a lockfile left behind breaks every `--locked` build
+git commit -am "release: v0.1.1" && git push
+
+# 3. tag the commit you just pushed
 git tag v0.1.1 && git push --tags
 ```
 
 The tag must match the version in `Cargo.toml` — the workflow fails fast if it
-doesn't. An existing tag can be rebuilt from the Actions tab via the
-`workflow_dispatch` trigger.
+doesn't. `Cargo.lock` records the version of `tenki` itself, so it has to move
+with it; the workflow re-syncs that entry defensively, but committing it keeps
+local `--locked` builds working too. An existing tag can be rebuilt from the
+Actions tab via the `workflow_dispatch` trigger.
 
 </details>
 
